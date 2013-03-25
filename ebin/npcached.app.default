@@ -1,0 +1,13 @@
+{application, npcached,
+  [ {description, "Nipack cached"},
+    {vsn, "1.0.0"},
+    {modules, [npcached, tcp_server, kvs, database, sweeper]},
+    {registered, [npcached]},
+    {mod, {npcached, []}},
+    {env, 
+     [
+        {port, 11211},                           %% Port.
+        {commnication_protocol, memcached},      %% Support protocol.
+        {replicate_nodes, []}                    %% This node is master when this values [].
+     ]}
+  ]}.
