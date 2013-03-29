@@ -31,7 +31,17 @@ progress( Soc ) ->
 %%------------------------------------------------------------------------------------------------
 %% parse and execute command.
 %%------------------------------------------------------------------------------------------------
-exec_command( ["get", Key], Soc ) ->
+exec_command( Token, Soc ) ->
+  if
+    length( Token ) >= 0 ->
+      {H, T} = lists:split( 1, Token ),
+      R = string:to_lower( hd( H ) ),
+      exec_command_impl( [R] ++ T, Soc );
+    true ->
+      send_error( Soc )
+  end.
+
+exec_command_impl( ["get", Key], Soc ) ->
   case kvs:get( Key ) of
     {ok, Value} ->
       gen_tcp:send( Soc,
@@ -40,7 +50,7 @@ exec_command( ["get", Key], Soc ) ->
       send_error( Soc )
   end,
   {ok, []};
-exec_command( ["set", Key, Flags, Expire, Len], Soc ) ->
+ exec_command_impl( ["set", Key, Flags, Expire, Len], Soc ) ->
   try
     %% Convert.
     ExpireInt = list_to_integer( Expire ),
@@ -65,7 +75,7 @@ exec_command( ["set", Key, Flags, Expire, Len], Soc ) ->
       send_error( Soc ),
       {ok, []}
   end;
-exec_command( ["delete", Key], Soc ) ->
+exec_command_impl( ["delete", Key], Soc ) ->
   case kvs:delete( Key ) of
     {ok, _} ->
       gen_tcp:send( Soc, "DELETED\r\n" ),
@@ -74,7 +84,7 @@ exec_command( ["delete", Key], Soc ) ->
       gen_tcp:send( Soc, "NOT FOUND\r\n" ),
       {ok, []}
   end;
-exec_command( ["incr", Key, Dist], Soc ) ->
+exec_command_impl( ["incr", Key, Dist], Soc ) ->
   try
     DistInt = list_to_integer( Dist ),
     Fun = fun() -> kvs:incr( Key, DistInt ) end,
@@ -84,7 +94,7 @@ exec_command( ["incr", Key, Dist], Soc ) ->
       send_error( Soc ),
       {ok, []}
   end;
-exec_command( ["decr", Key, Dist], Soc ) ->
+exec_command_impl( ["decr", Key, Dist], Soc ) ->
   try
     DistInt = list_to_integer( Dist ),
     Fun = fun() -> kvs:decr( Key, DistInt ) end,
@@ -94,7 +104,7 @@ exec_command( ["decr", Key, Dist], Soc ) ->
       send_error( Soc ),
       {ok, []}
   end;
-exec_command( ["stats"], Soc ) ->
+exec_command_impl( ["stats"], Soc ) ->
   %% 適当Ver
   {_, Sec, _} = now(),
   gen_tcp:send( Soc, io_lib:format( "~s\r\n",    ["STAT version 0.9.0"] ) ),
@@ -102,9 +112,9 @@ exec_command( ["stats"], Soc ) ->
   gen_tcp:send( Soc, io_lib:format( "~s ~p\r\n", ["STAT time", Sec] ) ),
   gen_tcp:send( Soc, io_lib:format( "END\r\n" ) ),
   {ok, []};
-exec_command( ["quit"], _Soc ) ->
+exec_command_impl( ["quit"], _Soc ) ->
   {close, []};
-exec_command( _, Soc) ->
+exec_command_impl( _, Soc) ->
   send_error( Soc ),
   {ok, []}.
 
