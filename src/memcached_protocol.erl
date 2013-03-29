@@ -33,7 +33,7 @@ progress( Soc ) ->
 %%------------------------------------------------------------------------------------------------
 exec_command( Token, Soc ) ->
   if
-    length( Token ) >= 0 ->
+    length( Token ) > 0 ->
       {H, T} = lists:split( 1, Token ),
       R = string:to_lower( hd( H ) ),
       exec_command_impl( [R] ++ T, Soc );
